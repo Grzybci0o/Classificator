@@ -1,2 +1,0 @@
-C:\Users\barte\RiderProjects\Projekt\Projekt\bin\Release\net7.0-windows\win-x64\publish\Projekt.pdb
-C:\Users\barte\RiderProjects\Projekt\Projekt\bin\Release\net7.0-windows\win-x64\publish\Projekt.exe
