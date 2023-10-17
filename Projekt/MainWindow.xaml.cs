@@ -42,6 +42,22 @@ namespace Projekt
             //Ustawienie cultury na en (mialem ',' zamiat '.' w double)
             LanguageProperty.OverrideMetadata(typeof(FrameworkElement),
                 new FrameworkPropertyMetadata(XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag)));
+            
+            AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(GlobalExceptionHandler);
+        }
+        
+        private void GlobalExceptionHandler(object sender, UnhandledExceptionEventArgs e)
+        {
+            Exception ex = e.ExceptionObject as Exception;
+            if (ex != null)
+            {
+                notesTextBox.AppendText(ex.StackTrace + Environment.NewLine + "\n");
+                notesTextBox.Foreground = Brushes.Red;
+                
+                MessageBox.Show("Aplikacja napotkała nieobsłużony błąd. Kliknij OK, aby zamknąć aplikację.");
+
+                Application.Current.Shutdown();
+            }
         }
 
         private void LoadButton_Click(object sender, RoutedEventArgs e)
@@ -67,13 +83,10 @@ namespace Projekt
                     }
                 }
 
-                _currentRowId = 0;
+                // _currentRowId = 0;
             }
-
-            if (_currentRowId == 0)
-            {
-                ShowNext();
-            }
+            
+            ShowNext();
         }
 
         private void FaultNormalButton_Click(object sender, RoutedEventArgs e)
@@ -81,7 +94,6 @@ namespace Projekt
             if (_fnames != null)
             {
                 ClassifyAs("fault", "normal");
-
             }
             else
             {
@@ -124,17 +136,27 @@ namespace Projekt
 
         private void ClassifyAs(string level, string shape)
         {
-            string projectPath = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(Directory.GetCurrentDirectory()))) ?? throw new InvalidOperationException(); // Ścieżka do katalogu projektu
-            string plikiDirectory = Path.Combine(projectPath, "pliki");
-            string reportFileName = Path.Combine(plikiDirectory, "classify_report.json");
+            string projectPath;
+            string plikiDirectory;
+            string reportFileName = "";
             
-            ShowNext();
+            try
+            {
+                projectPath = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(Directory.GetCurrentDirectory())));
+                plikiDirectory = Path.Combine(projectPath, "pliki");
+                reportFileName = Path.Combine(plikiDirectory, "classify_report.json");
+            } catch (InvalidOperationException e)
+            {
+                notesTextBox.AppendText(e.StackTrace);
+            }
             
             if (_isNext)
             {
                 Debug.WriteLine("rowId: " + _currentRowId);
+                notesTextBox.AppendText("rowId: " + _currentRowId + "\n");
                 var fName = _fnames[_currentRowId];
                 Debug.WriteLine("The file " + fName + " has been classified as " + level + " " + shape);
+                notesTextBox.AppendText("The file " + fName + " has been classified as " + level + " " + shape + "\n");
                 using (StreamWriter writer = new StreamWriter(reportFileName, true, Encoding.GetEncoding("utf-8")))
                 {
                     string repLine = PrepareJson(level, shape);
@@ -150,7 +172,10 @@ namespace Projekt
             else
             {
                 Debug.WriteLine("No file to be classfied");
+                notesTextBox.AppendText("No file to be classfied" + "\n");
             }
+            
+            ShowNext();
         }
 
         private string PrepareJson(string level, string shape)
@@ -172,19 +197,28 @@ namespace Projekt
 
         public void ShowNext()
         {
+            if (!_isNext)
+            {
+                Debug.WriteLine("No file to be classified");
+                notesTextBox.AppendText("No file to be classified" + "\n");
+                return;
+            }
+
             List<int> timingi = new List<int>();
             List<double> meanU = new List<double>();
             List<double> meanUSmooth = new List<double>();
             List<double> xnew = new List<double>();
             int tpocz = 0;
             _currentRowId += 1;
-            
+
             Debug.WriteLine("current row is " + _currentRowId + " fNames contains " + _fnames.Length + " elements");
+            notesTextBox.AppendText("current row is " + _currentRowId + " fNames contains " + _fnames.Length + " elements" + "\n");
             if (_currentRowId < _fnames.Length)
             {
                 string path = _fnames[_currentRowId];
                 var fName = path.Split("/").Last();
                 Debug.WriteLine("Next file is " + fName);
+                notesTextBox.AppendText("Next file is " + fName + "\n");
                 using (var fs = new FileStream(fName, FileMode.Open, FileAccess.Read))
                 {
                     IWorkbook workbook = null!;
@@ -207,9 +241,9 @@ namespace Projekt
                 
                 PlotChart(meanU, meanUSmooth, timingi, tpocz, xnew);
             } else {
-                    _isNext = false;
-                    picture.Source = _brainImage;
-                    ClearFileList();
+                _isNext = false;
+                picture.Source = _brainImage;
+                ClearFileList();
             }
             
             _currentRowMeans.TS = tpocz;
@@ -221,6 +255,10 @@ namespace Projekt
         {
             var plotModel = new PlotModel() { Background = OxyColors.White };
             var xs = new List<double> { tpocz, tpocz + 30000 };
+
+            string projectPath;
+            string imagesDirectory;
+            string imagePath = "";
             
             // Tworzenie serii danych dla meanU
             var meanUSeries = new LineSeries
@@ -270,9 +308,19 @@ namespace Projekt
             var exporter = new PngExporter { Width = 640, Height = 480};
 
             // Zapisz wykres do pliku obrazu
-            string projectPath = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(Directory.GetCurrentDirectory()))) ?? throw new InvalidOperationException(); // Ścieżka do katalogu projektu
-            string imagesDirectory = Path.Combine(projectPath, "images");
-            string imagePath = Path.Combine(imagesDirectory, "tmpChart.png");
+            try
+            {
+                projectPath =
+                    Path.GetDirectoryName(
+                        Path.GetDirectoryName(Path.GetDirectoryName(Directory.GetCurrentDirectory())));// Ścieżka do katalogu projektu
+                imagesDirectory = Path.Combine(projectPath, "images");
+                imagePath = Path.Combine(imagesDirectory, "tmpChart.png");
+            }
+            catch (InvalidOperationException e)
+            {
+                notesTextBox.AppendText(e.StackTrace);
+            }
+           
             
             exporter.ExportToFile(plotModel, imagePath);
             
