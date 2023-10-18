@@ -8,14 +8,13 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <PackageReference Include="EPPlus" Version="6.2.10" />
       <PackageReference Include="ExcelDataReader" Version="3.6.0" />
       <PackageReference Include="GrapeCity.DataVisualization.Chart" Version="0.4.136" />
       <PackageReference Include="JsonConverters.Collections" Version="3.2.355" />
       <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
       <PackageReference Include="MatplotlibCS" Version="1.0.63" />
-      <PackageReference Include="NPOI.Excel" Version="2.1.1" />
-      <PackageReference Include="OfficeOpenXml.Core.ExcelPackage" Version="1.0.0" />
-      <PackageReference Include="OfficeOpenXml.Extends" Version="1.0.6" />
+      <PackageReference Include="NPOI" Version="2.6.2" />
       <PackageReference Include="OxyPlot.WindowsForms" Version="2.1.2" />
       <PackageReference Include="OxyPlot.Wpf" Version="2.1.2" />
       <PackageReference Include="Pandas.NET" Version="0.5.1" />
