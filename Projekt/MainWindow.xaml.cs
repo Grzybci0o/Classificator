@@ -29,7 +29,6 @@ namespace Projekt
         private int _currentRowId = -1;
         private bool _isNext = true;
         private BitmapImage _brainImage = new BitmapImage(new Uri("images/brain.jpg", UriKind.RelativeOrAbsolute));
-        private BitmapImage bitmapImage;
         private currentRowMeans _currentRowMeans = new currentRowMeans();
 
         public MainWindow()
@@ -53,6 +52,7 @@ namespace Projekt
             {
                 notesTextBox.AppendText(ex.StackTrace + Environment.NewLine + "\n");
                 notesTextBox.Foreground = Brushes.Red;
+                LogExceptionToFile(ex);
                 
                 MessageBox.Show("Aplikacja napotkała nieobsłużony błąd. Kliknij OK, aby zamknąć aplikację.");
 
@@ -62,32 +62,61 @@ namespace Projekt
 
         private void LoadButton_Click(object sender, RoutedEventArgs e)
         {
-            OpenFileDialog openFileDialog = new OpenFileDialog();
-            openFileDialog.Multiselect = true;
-            openFileDialog.Filter = "Pliki Excel (*.xls;*.xlsx)|*.xls;*.xlsx|Wszystkie pliki (*.*)|*.*";
-
-            if (openFileDialog.ShowDialog() == true)
+            try
             {
-                _fnames = openFileDialog.FileNames;
-                fileList.Items.Clear();
+                OpenFileDialog openFileDialog = new OpenFileDialog();
+                openFileDialog.Multiselect = true;
+                openFileDialog.Filter = "Pliki Excel (*.xls;*.xlsx)|*.xls;*.xlsx|Wszystkie pliki (*.*)|*.*";
 
-                if (openFileDialog.FileNames.Length == 1)
+                if (openFileDialog.ShowDialog() == true)
                 {
-                    fileList.Items.Add(Path.GetFileName(_fnames[0]));
-                }
-                else
-                {
-                    foreach (string fileName in _fnames)
+                    _fnames = openFileDialog.FileNames;
+                    fileList.Items.Clear();
+
+                    if (openFileDialog.FileNames.Length == 1)
                     {
-                        fileList.Items.Add(Path.GetFileName(fileName));
+                        fileList.Items.Add(Path.GetFileName(_fnames[0]));
+                    }
+                    else
+                    {
+                        foreach (string fileName in _fnames)
+                        {
+                            fileList.Items.Add(Path.GetFileName(fileName));
+                        }
                     }
                 }
 
-                // _currentRowId = 0;
+                ShowNext();
             }
-            
-            ShowNext();
+            catch (Exception ex)
+            {
+                LogExceptionToFile(ex);
+            }
         }
+        
+        private void LogExceptionToFile(Exception ex)
+        {
+            string exceptionLog = $"{DateTime.Now} - {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}\n\n";
+
+            try
+            {
+                string logDirectory = "logs";
+                string logFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, logDirectory);
+
+                if (!Directory.Exists(logFolderPath))
+                {
+                    Directory.CreateDirectory(logFolderPath);
+                }
+
+                string logFilePath = Path.Combine(logFolderPath, "exception_log.txt");
+                File.AppendAllText(logFilePath, exceptionLog);
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("Błąd podczas zapisywania wyjątku do pliku.", "Błąd", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+    
 
         private void FaultNormalButton_Click(object sender, RoutedEventArgs e)
         {
@@ -136,18 +165,15 @@ namespace Projekt
 
         private void ClassifyAs(string level, string shape)
         {
-            string projectPath;
-            string plikiDirectory;
+
             string reportFileName = "";
-            
             try
             {
-                projectPath = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(Directory.GetCurrentDirectory())));
-                plikiDirectory = Path.Combine(projectPath, "pliki");
-                reportFileName = Path.Combine(plikiDirectory, "classify_report.json");
-            } catch (InvalidOperationException e)
+                reportFileName = "classify_report.json";
+            } catch (InvalidOperationException ex)
             {
-                notesTextBox.AppendText(e.StackTrace);
+                notesTextBox.AppendText(ex.StackTrace);
+                LogExceptionToFile(ex);
             }
             
             if (_isNext)
@@ -206,7 +232,6 @@ namespace Projekt
 
             List<int> timingi = new List<int>();
             List<double> meanU = new List<double>();
-            List<double> meanUSmooth = new List<double>();
             List<double> xnew = new List<double>();
             int tpocz = 0;
             _currentRowId += 1;
@@ -236,10 +261,10 @@ namespace Projekt
                     FillMeanUAndTimingsLists(workbook, timingi, meanU);
                     tpocz = FindTpocz(workbook);
                 }
-                meanUSmooth = Interpolation(timingi,meanU);
+                var interpolation = Interpolation(timingi,meanU);
                 xnew = XNewValue(timingi);
                 
-                PlotChart(meanU, meanUSmooth, timingi, tpocz, xnew);
+                PlotChart(meanU, interpolation, timingi, tpocz, xnew);
             } else {
                 _isNext = false;
                 picture.Source = _brainImage;
@@ -251,14 +276,12 @@ namespace Projekt
             _currentRowMeans.M = meanU;
         }
 
-        public void PlotChart(List<double> meanU, List<double> meanUsmooth, List<int> timings, int tpocz, List<double> xnew)
+        public void PlotChart(List<double> meanU, IInterpolation interpolation, List<int> timings, int tpocz, List<double> xnew)
         {
-            var plotModel = new PlotModel() { Background = OxyColors.White };
+            PlotModel plotModel = new PlotModel() { Background = OxyColors.White };
             var xs = new List<double> { tpocz, tpocz + 30000 };
 
-            string projectPath;
-            string imagesDirectory;
-            string imagePath = "";
+            string imagePath;
             
             // Tworzenie serii danych dla meanU
             var meanUSeries = new LineSeries
@@ -280,12 +303,13 @@ namespace Projekt
                 Title = "smooth",
                 LineStyle = LineStyle.Dash
             };
-
-            for (int i = 0; i < xnew.Count; i++)
-            {
-                //interpolowane dane średnio tutaj działają (kropki wystrzeliwują możliwe, że funkcja interpolacji jest walnięta)
-                meanUsmoothSeries.Points.Add(new DataPoint(xnew[i], meanUsmooth[i]));
-            }
+            
+            // var xnewMeanUsmooth = xnew.Select(x => interpolation.Interpolate(x)).ToArray();
+            // for (int i = 0; i < xnew.Count; i++)
+            // {
+            //     //interpolowane dane średnio tutaj działają (kropki wystrzeliwują możliwe, że funkcja interpolacji jest walnięta)
+            //     meanUsmoothSeries.Points.Add(new DataPoint(xnew[i], xnewMeanUsmooth[i]));
+            // }
             
             plotModel.Series.Add(meanUsmoothSeries);
 
@@ -297,10 +321,11 @@ namespace Projekt
                 MarkerSize = 8,
             };
             
+            var xsMeanUsmooth = xs.Select(x => interpolation.Interpolate(x)).ToArray();
             for (int i = 0; i < xs.Count; i++)
             {
-                //interpolowane dane średnio tutaj działają (kropki wystrzeliwują możliwe, że funkcja interpolacji jest walnięta)
-                standardSeries.Points.Add(new DataPoint(xs[i], meanUsmooth[i])); 
+                notesTextBox.AppendText(xsMeanUsmooth[i] + "\n");
+                standardSeries.Points.Add(new DataPoint(xs[i], 25)); 
             }
             
             plotModel.Series.Add(standardSeries);
@@ -310,53 +335,28 @@ namespace Projekt
             // Zapisz wykres do pliku obrazu
             try
             {
-                projectPath =
-                    Path.GetDirectoryName(
-                        Path.GetDirectoryName(Path.GetDirectoryName(Directory.GetCurrentDirectory())));// Ścieżka do katalogu projektu
-                imagesDirectory = Path.Combine(projectPath, "images");
-                imagePath = Path.Combine(imagesDirectory, "tmpChart.png");
+                imagePath = "tmpChart.png";
+                exporter.ExportToFile(plotModel, imagePath);
+                
             }
-            catch (InvalidOperationException e)
+            catch (InvalidOperationException ex)
             {
-                notesTextBox.AppendText(e.StackTrace);
+                notesTextBox.AppendText(ex.StackTrace);
+                LogExceptionToFile(ex);
             }
-           
             
-            exporter.ExportToFile(plotModel, imagePath);
-            
-            // Utwórz kontrolkę OxyPlot
-            var plotView = new PlotView();
-            plotView.Model = plotModel;
-
-            // Utwórz RenderTargetBitmap i ustaw rozmiar docelowy
-            RenderTargetBitmap renderTargetBitmap = new RenderTargetBitmap(640, 480, 96, 96, PixelFormats.Pbgra32);
-            renderTargetBitmap.Render(plotView);
-
-            // Konwertuj RenderTargetBitmap na obraz
-            var encoder = new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(renderTargetBitmap));
-            using (var memoryStream = new MemoryStream())
-            {
-                encoder.Save(memoryStream);
-                memoryStream.Seek(0, SeekOrigin.Begin);
-
-                // Utwórz obraz na podstawie danych z RenderTargetBitmap
-                var bitmapImage = new BitmapImage();
-                bitmapImage.BeginInit();
-                bitmapImage.StreamSource = memoryStream;
-                bitmapImage.EndInit();
-
-                // Ustaw obraz jako źródło dla picture
-                picture.Source = bitmapImage;
-            }
+            BitmapSource bitmap = exporter.ExportToBitmap(plotModel);
+            picture.Source = bitmap;
         }
 
         private List<double> XNewValue(List<int> timingi)
         {
             int t0 = timingi.First();
             int tEnd = timingi.Last();
-            var xnew = Enumerable.Range(0, timingi.Count)
-                .Select(i => t0 + (i / (timingi.Count - 1.0)) * (tEnd - t0))
+            int size = tEnd - t0 + 10;
+
+            var xnew = Enumerable.Range(0, size)
+                .Select(i => t0 + (i / (double)(size - 10)) * (tEnd - t0))
                 .ToList();
 
             return xnew;
@@ -365,19 +365,26 @@ namespace Projekt
         private int FindTpocz(IWorkbook workbook)
         {
             int tpocz = 0;
+
             ISheet sheet = workbook.GetSheetAt(0);
-            for (int row = 11; row <= sheet.LastRowNum; row++)
+            for (int row = 10; row <= sheet.LastRowNum; row++)
             {
                 IRow currentRow = sheet.GetRow(row);
                 if (currentRow != null)
                 {
-                    ICell tpoczCell = currentRow.GetCell(8);
-                    ICell timingCell = currentRow.GetCell(0);
-                    if (tpoczCell != null && tpoczCell.StringCellValue.Equals("początek"))
+                    foreach (ICell cell in currentRow)
                     {
-                        string tpoczValue = timingCell.StringCellValue;
-                        TimeSpan czas = TimeSpan.ParseExact(tpoczValue, "hh\\:mm\\:ss\\.ff", null);
-                        tpocz = (int)czas.TotalMilliseconds;
+                        if (cell != null && cell.CellType == CellType.String && cell.StringCellValue == "początek")
+                        {
+                            ICell timingCell = currentRow.GetCell(0); 
+                            if (timingCell != null)
+                            {
+                                string tpoczValue = timingCell.StringCellValue;
+                                TimeSpan czas = TimeSpan.ParseExact(tpoczValue, "hh\\:mm\\:ss\\.ff", null);
+                                tpocz = (int)czas.TotalMilliseconds;
+                            }
+                            break;
+                        }
                     }
                 }
             }
@@ -414,22 +421,32 @@ namespace Projekt
                 }
             }
         }
+        
+        // private List<double> Interpolation(List<int> timings, List<double> meanU)
+        // {
+        //     double[] xData = Enumerable.Range(0, timings.Count).Select(i => (double)i).ToArray();
+        //     double[] yData = meanU.ToArray();
+        //     List<double> interpolationFunc = new List<double>();
+        //     
+        //     IInterpolation interpolation = CubicSpline.InterpolateNatural(xData, yData);
+        //     
+        //     foreach (var value in meanU)
+        //     {
+        //         double interpolatedValue = interpolation.Interpolate(value);
+        //         interpolationFunc.Add(interpolatedValue);
+        //     }
+        //
+        //     return interpolationFunc;
+        // }
 
-        private List<double> Interpolation(List<int> timings, List<double> meanU)
+        private IInterpolation Interpolation(List<int> timings, List<double> meanU)
         {
-            double[] xData = Enumerable.Range(0, timings.Count).Select(i => (double)i).ToArray();
-            double[] yData = meanU.ToArray();
-            List<double> interpolationFunc = new List<double>();
+            double[] x = Enumerable.Range(0, timings.Count).Select(i => (double)i).ToArray();
+            double[] y = meanU.ToArray();
             
-            IInterpolation interpolation = CubicSpline.InterpolateNatural(xData, yData);
+            IInterpolation interpolation = CubicSpline.InterpolateAkima(x, y);
 
-            foreach (var value in meanU)
-            {
-                double interpolatedValue = interpolation.Interpolate(value);
-                interpolationFunc.Add(interpolatedValue);
-            }
-
-            return interpolationFunc;
+            return interpolation;
         }
 
         private void ClearFileList()

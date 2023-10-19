@@ -23,7 +23,7 @@
         <!-- Panel po prawej stronie -->
         <StackPanel Grid.Column="1" Margin="10">
             <TextBlock FontSize="16" FontWeight="Bold" Margin="0,0,0,10">Image</TextBlock>
-            <Image Name="picture" Height="300" Source="images/brain.jpg"/>
+            <Image x:Name="picture" Height="300"/>
             <Grid>
                 <!-- Buttons layout in the right panel -->
                 <Grid.RowDefinitions>
