@@ -71,27 +71,60 @@ namespace Projekt
 
                 if (openFileDialog.ShowDialog() == true)
                 {
-                    _fnames = openFileDialog.FileNames;
-                    fileList.Items.Clear();
+                    List<string> validFileNames = new List<string>();
 
-                    if (openFileDialog.FileNames.Length == 1)
+                    foreach (string fileName in openFileDialog.FileNames)
                     {
-                        fileList.Items.Add(Path.GetFileName(_fnames[0]));
-                    }
-                    else
-                    {
-                        foreach (string fileName in _fnames)
+                        if (IsFileLocked(fileName))
                         {
-                            fileList.Items.Add(Path.GetFileName(fileName));
+                            MessageBox.Show($"Plik {Path.GetFileName(fileName)} jest obecnie otwarty w innym programie i nie zostanie dodany do tej aplikacji.");
+                        }
+                        else
+                        {
+                            validFileNames.Add(fileName);
                         }
                     }
+
+                    if (validFileNames.Count > 0)
+                    {
+                        _fnames = validFileNames.ToArray();
+                        fileList.Items.Clear();
+
+                        if (_fnames.Length == 1)
+                        {
+                            fileList.Items.Add(Path.GetFileName(_fnames[0]));
+                        }
+                        else
+                        {
+                            foreach (string file in _fnames)
+                            {
+                                fileList.Items.Add(Path.GetFileName(file));
+                            }
+                        }
+
+                        _isNext = true;
+                        ShowNext();
+                    }
                 }
-                _isNext = true;
-                ShowNext();
             }
             catch (Exception ex)
             {
                 LogExceptionToFile(ex);
+            }
+        }
+        
+        private bool IsFileLocked(string filePath)
+        {
+            try
+            {
+                using (FileStream stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.None))
+                {
+                    return false;
+                }
+            }
+            catch (IOException)
+            {
+                return true;
             }
         }
         
