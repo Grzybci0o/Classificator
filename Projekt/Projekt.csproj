@@ -5,6 +5,8 @@
         <TargetFramework>net7.0-windows</TargetFramework>
         <Nullable>enable</Nullable>
         <UseWPF>true</UseWPF>
+        <ApplicationIcon>images\brain.ico</ApplicationIcon>
+        <AssemblyName>meanUClassifier</AssemblyName>
     </PropertyGroup>
 
     <ItemGroup>

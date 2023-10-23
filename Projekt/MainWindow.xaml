@@ -5,23 +5,26 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Projekt"
         mc:Ignorable="d"
-        Title="meanUClassifier" Height="500" Width="1200">
+        Title="meanUClassifier" Height="700" Width="1700"
+        Icon="images/brain.jpg">
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="1*" />
+            <ColumnDefinition Width="0.5*" />
             <ColumnDefinition Width="2*" />
-            <ColumnDefinition Width="1*" />
+            <ColumnDefinition Width="0.5*" />
         </Grid.ColumnDefinitions>
 
         <!-- Panel po lewej stronie -->
         <StackPanel Grid.Column="0" Margin="10">
-            <TextBlock FontSize="16" FontWeight="Bold" Margin="0,0,0,10">File list</TextBlock>
-            <ListBox Name="fileList" Height="360" />
-            <Button Name="loadButton" Content="Load Files" Click="LoadButton_Click" Margin="0,10,0,0" />
+            <TextBlock FontSize="24" FontWeight="Bold" Margin="0,0,0,20">File list</TextBlock>
+            <ListBox Name="fileList" Height="480"/>
+            <Button Name="loadButton" FontSize="24" FontWeight="Bold" Content="Load Files" Click="LoadButton_Click" Margin="0,20,0,0" />
         </StackPanel>
 
         <!-- Panel po prawej stronie -->
         <StackPanel Grid.Column="1" Margin="10">
+            <TextBlock FontSize="24" FontWeight="Bold" Margin="0,0,0,20" Name="examine" TextAlignment="Center"></TextBlock>
+            <Image x:Name="picture" Height="480" Width="900"/>
             <Grid>
                 <!-- Buttons layout in the right panel -->
                 <Grid.RowDefinitions>
@@ -32,32 +35,18 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-            <TextBlock FontSize="16" FontWeight="Bold" Margin="0,0,0,10" Grid.Column="0">Image</TextBlock>
-                <TextBlock FontSize="16" FontWeight="Bold" Margin="0,0,0,10" Name="examine" Grid.Column="1"></TextBlock>
-            </Grid>
-            <Image x:Name="picture" Height="360"/>
-            <Grid>
-                <!-- Buttons layout in the right panel -->
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                
-                <Button Content="fault normal" Click="FaultNormalButton_Click" Grid.Row="0" Grid.Column="0" Margin="0,10,0,0"/>
-                <Button Content="fault wave" Click="FaultWaveButton_Click" Grid.Row="1" Grid.Column="0" />
-                <Button Content="correct normal" Click="PerfectNormalButton_Click" Grid.Row="0" Grid.Column="1" Margin="0,10,0,0"/>
-                <Button Content="correct wave" Click="PerfectWaveButton_Click" Grid.Row="1" Grid.Column="1" />
+                <Button Content="fault normal" FontSize="24" FontWeight="Bold" Click="FaultNormalButton_Click" Grid.Row="0" Grid.Column="0" Margin="10,20,10,10"/>
+                <Button Content="fault wave" FontSize="24" FontWeight="Bold" Click="FaultWaveButton_Click" Grid.Row="1" Grid.Column="0" Margin="10,5,10,10"/>
+                <Button Content="correct normal" FontSize="24" FontWeight="Bold" Click="PerfectNormalButton_Click" Grid.Row="0" Grid.Column="1" Margin="10,20,10,10"/>
+                <Button Content="correct wave" FontSize="24" FontWeight="Bold" Click="PerfectWaveButton_Click" Grid.Row="1" Grid.Column="1" Margin="10,5,10,10"/>
             </Grid>
         </StackPanel>
         
         <!-- Trzecia kolumna dla notatek i komunikatów -->
         <StackPanel Grid.Column="2" Margin="10">
-            <TextBlock FontSize="16" FontWeight="Bold" Margin="0,0,0,10">Technical notes</TextBlock>
-            <TextBox x:Name="notesTextBox" Height="360" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap" AcceptsReturn="True" IsReadOnly="True" />
+            <TextBlock FontSize="24" FontWeight="Bold" Margin="0,0,0,20">Technical notes</TextBlock>
+            <TextBox x:Name="notesTextBox" Height="480" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap" AcceptsReturn="True" IsReadOnly="True" />
+            <Button Name="copyNotesButton" FontSize="24" FontWeight="Bold" Content="Copy notes to clipboard" Click="Copy_notes" Margin="0,20,0,0" />
         </StackPanel>
     </Grid>
 </Window>

@@ -61,6 +61,19 @@ namespace Projekt
             }
         }
 
+        private void Copy_notes(object sender, RoutedEventArgs e)
+        {
+            if (!string.IsNullOrWhiteSpace(notesTextBox.Text))
+            {
+                Clipboard.SetText(notesTextBox.Text);
+                MessageBox.Show("Notes copied to clipboard.", "Copy Notes", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show("No notes to copy.", "Copy Notes", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         private void LoadButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -275,7 +288,7 @@ namespace Projekt
                 string path = _fnames[_currentRowId];
                 var fName = path.Split("/").Last();
                 notesTextBox.AppendText("Next file is " + Path.GetFileName(fName) + "\n");
-                examine.Text = "file: " +  Path.GetFileName(fName);
+                examine.Text = Path.GetFileName(fName);
                 using (var fs = new FileStream(fName, FileMode.Open, FileAccess.Read))
                 {
                     IWorkbook workbook = null!;
