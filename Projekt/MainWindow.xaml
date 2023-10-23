@@ -22,7 +22,19 @@
 
         <!-- Panel po prawej stronie -->
         <StackPanel Grid.Column="1" Margin="10">
-            <TextBlock FontSize="16" FontWeight="Bold" Margin="0,0,0,10">Image</TextBlock>
+            <Grid>
+                <!-- Buttons layout in the right panel -->
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+            <TextBlock FontSize="16" FontWeight="Bold" Margin="0,0,0,10" Grid.Column="0">Image</TextBlock>
+                <TextBlock FontSize="16" FontWeight="Bold" Margin="0,0,0,10" Name="examine" Grid.Column="1"></TextBlock>
+            </Grid>
             <Image x:Name="picture" Height="360"/>
             <Grid>
                 <!-- Buttons layout in the right panel -->

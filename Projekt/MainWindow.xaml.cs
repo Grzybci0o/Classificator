@@ -179,11 +179,9 @@ namespace Projekt
             
             if (_isNext)
             {
-                Debug.WriteLine("rowId: " + _currentRowId);
                 notesTextBox.AppendText("rowId: " + _currentRowId + "\n");
                 var fName = _fnames[_currentRowId];
-                Debug.WriteLine("The file " + fName + " has been classified as " + level + " " + shape);
-                notesTextBox.AppendText("The file " + fName + " has been classified as " + level + " " + shape + "\n");
+                notesTextBox.AppendText("The file " + Path.GetFileName(fName) + " has been classified as " + level + " " + shape + "\n");
                 using (StreamWriter writer = new StreamWriter(reportFileName, true, Encoding.GetEncoding("utf-8")))
                 {
                     string repLine = PrepareJson(level, shape);
@@ -243,8 +241,8 @@ namespace Projekt
             {
                 string path = _fnames[_currentRowId];
                 var fName = path.Split("/").Last();
-                Debug.WriteLine("Next file is " + fName);
-                notesTextBox.AppendText("Next file is " + fName + "\n");
+                notesTextBox.AppendText("Next file is " + Path.GetFileName(fName) + "\n");
+                examine.Text = "file: " +  Path.GetFileName(fName);
                 using (var fs = new FileStream(fName, FileMode.Open, FileAccess.Read))
                 {
                     IWorkbook workbook = null!;
@@ -371,7 +369,7 @@ namespace Projekt
                 {
                     foreach (ICell cell in currentRow)
                     {
-                        if (cell != null && cell.CellType == CellType.String && cell.StringCellValue == "początek")
+                        if (cell != null && cell.CellType == CellType.String && cell.StringCellValue.ToLower() == "początek" )
                         {
                             ICell timingCell = currentRow.GetCell(0); 
                             if (timingCell != null)
