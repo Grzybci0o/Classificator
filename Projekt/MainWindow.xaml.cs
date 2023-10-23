@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using MathNet.Numerics;
 using Microsoft.Win32;
 using NPOI.HSSF.UserModel;
 using NPOI.SS.UserModel;
@@ -85,7 +86,7 @@ namespace Projekt
                         }
                     }
                 }
-
+                _isNext = true;
                 ShowNext();
             }
             catch (Exception ex)
@@ -261,10 +262,10 @@ namespace Projekt
                     FillMeanUAndTimingsLists(workbook, timingi, meanU);
                     tpocz = FindTpocz(workbook);
                 }
-                var interpolation = Interpolation(timingi,meanU);
+                
                 xnew = XNewValue(timingi);
                 
-                PlotChart(meanU, interpolation, timingi, tpocz, xnew);
+                PlotChart(meanU, timingi, tpocz, xnew);
             } else {
                 _isNext = false;
                 picture.Source = _brainImage;
@@ -276,7 +277,7 @@ namespace Projekt
             _currentRowMeans.M = meanU;
         }
 
-        public void PlotChart(List<double> meanU, IInterpolation interpolation, List<int> timings, int tpocz, List<double> xnew)
+        public void PlotChart(List<double> meanU, List<int> timings, int tpocz, List<double> xnew)
         {
             PlotModel plotModel = new PlotModel() { Background = OxyColors.White };
             var xs = new List<double> { tpocz, tpocz + 30000 };
@@ -287,52 +288,48 @@ namespace Projekt
             var meanUSeries = new LineSeries
             {
                 Title = "input",
-                MarkerType = MarkerType.Circle
+                MarkerType = MarkerType.Circle,
+                Color = OxyColor.FromRgb(0, 0, 255)
             };
-
-            for (int i = 0; i < timings.Count; i++)
-            {
-                meanUSeries.Points.Add(new DataPoint(timings[i], meanU[i]));
-            }
-
-            plotModel.Series.Add(meanUSeries);
-
-            // Tworzenie serii danych dla meanUsmooth - do poprawy bo jest cos zle (obliczanie meanUsmooth)
             var meanUsmoothSeries = new LineSeries
             {
                 Title = "smooth",
-                LineStyle = LineStyle.Dash
+                LineStyle = LineStyle.Dash,
+                Color = OxyColor.FromRgb(255, 0, 0),
             };
-            
-            // var xnewMeanUsmooth = xnew.Select(x => interpolation.Interpolate(x)).ToArray();
-            // for (int i = 0; i < xnew.Count; i++)
-            // {
-            //     //interpolowane dane średnio tutaj działają (kropki wystrzeliwują możliwe, że funkcja interpolacji jest walnięta)
-            //     meanUsmoothSeries.Points.Add(new DataPoint(xnew[i], xnewMeanUsmooth[i]));
-            // }
-            
-            plotModel.Series.Add(meanUsmoothSeries);
-
-            // Tworzenie serii danych dla standard
             var standardSeries = new LineSeries
             {
                 Title = "standard",
                 MarkerType = MarkerType.Circle,
                 MarkerSize = 8,
+                Color = OxyColor.FromRgb(0, 255, 0),
             };
+            
+            for (int i = 0; i < timings.Count; i++)
+            {
+                meanUSeries.Points.Add(new DataPoint(timings[i], meanU[i]));
+            }
+            
+            var interpolation = Interpolation(timings, meanU);
+            
+            var xnewMeanUsmooth = xnew.Select(x => interpolation.Interpolate(x)).ToArray();
+            for (int i = 0; i < xnew.Count; i++)
+            {
+                meanUsmoothSeries.Points.Add(new DataPoint(xnew[i], xnewMeanUsmooth[i]));
+            }
             
             var xsMeanUsmooth = xs.Select(x => interpolation.Interpolate(x)).ToArray();
             for (int i = 0; i < xs.Count; i++)
             {
-                notesTextBox.AppendText(xsMeanUsmooth[i] + "\n");
-                standardSeries.Points.Add(new DataPoint(xs[i], 25)); 
+                standardSeries.Points.Add(new DataPoint(xs[i], xsMeanUsmooth[i])); 
             }
             
+            plotModel.Series.Add(meanUSeries);
+            plotModel.Series.Add(meanUsmoothSeries);
             plotModel.Series.Add(standardSeries);
             
-            var exporter = new PngExporter { Width = 640, Height = 480};
-
-            // Zapisz wykres do pliku obrazu
+            
+            var exporter = new PngExporter { Width = 900, Height = 480};
             try
             {
                 imagePath = "tmpChart.png";
@@ -344,7 +341,7 @@ namespace Projekt
                 notesTextBox.AppendText(ex.StackTrace);
                 LogExceptionToFile(ex);
             }
-            
+
             BitmapSource bitmap = exporter.ExportToBitmap(plotModel);
             picture.Source = bitmap;
         }
@@ -422,29 +419,12 @@ namespace Projekt
             }
         }
         
-        // private List<double> Interpolation(List<int> timings, List<double> meanU)
-        // {
-        //     double[] xData = Enumerable.Range(0, timings.Count).Select(i => (double)i).ToArray();
-        //     double[] yData = meanU.ToArray();
-        //     List<double> interpolationFunc = new List<double>();
-        //     
-        //     IInterpolation interpolation = CubicSpline.InterpolateNatural(xData, yData);
-        //     
-        //     foreach (var value in meanU)
-        //     {
-        //         double interpolatedValue = interpolation.Interpolate(value);
-        //         interpolationFunc.Add(interpolatedValue);
-        //     }
-        //
-        //     return interpolationFunc;
-        // }
-
         private IInterpolation Interpolation(List<int> timings, List<double> meanU)
         {
-            double[] x = Enumerable.Range(0, timings.Count).Select(i => (double)i).ToArray();
-            double[] y = meanU.ToArray();
-            
-            IInterpolation interpolation = CubicSpline.InterpolateAkima(x, y);
+            double[] xData = timings.Select(i => (double)i).ToArray();
+            double[] yData = meanU.ToArray();
+
+            IInterpolation interpolation = CubicSpline.InterpolateNatural(xData, yData);
 
             return interpolation;
         }
