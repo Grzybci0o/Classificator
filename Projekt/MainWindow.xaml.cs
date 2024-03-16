@@ -26,6 +26,7 @@ namespace Projekt
 {
     public partial class MainWindow
     {
+        const double upperBound = 100;
         private string[] _fnames;
         private int _currentRowId = -1;
         private bool _isNext = true;
@@ -327,7 +328,21 @@ namespace Projekt
             var xs = new List<double> { tpocz, tpocz + 30000 };
 
             string imagePath;
-            
+
+            var zeroSeries = new LineSeries
+            {
+                Title = "",
+                LineStyle = LineStyle.Dash,
+                Color = OxyColor.FromRgb(255, 255, 255),
+            };
+
+            var upperSeries = new LineSeries
+            {
+                Title = "",
+                LineStyle = LineStyle.Dash,
+                Color = OxyColor.FromRgb(255, 255, 255),
+            };
+
             // Tworzenie serii danych dla meanU
             var meanUSeries = new LineSeries
             {
@@ -348,10 +363,13 @@ namespace Projekt
                 MarkerSize = 8,
                 Color = OxyColor.FromRgb(0, 255, 0),
             };
-            
+
+            zeroSeries.Points.Add(new DataPoint(timings[0], 0));
+            upperSeries.Points.Add(new DataPoint(timings[0], 100));
+
             for (int i = 0; i < timings.Count; i++)
             {
-                meanUSeries.Points.Add(new DataPoint(timings[i], meanU[i]));
+                meanUSeries.Points.Add(new DataPoint(timings[i], Math.Min(meanU[i], upperBound)));
             }
             
             var interpolation = Interpolation(timings, meanU);
@@ -359,21 +377,23 @@ namespace Projekt
             var xnewMeanUsmooth = xnew.Select(x => interpolation.Interpolate(x)).ToArray();
             for (int i = 0; i < xnew.Count; i++)
             {
-                meanUsmoothSeries.Points.Add(new DataPoint(xnew[i], xnewMeanUsmooth[i]));
+                meanUsmoothSeries.Points.Add(new DataPoint(xnew[i], Math.Min(xnewMeanUsmooth[i], upperBound)));
             }
             
             var xsMeanUsmooth = xs.Select(x => interpolation.Interpolate(x)).ToArray();
             for (int i = 0; i < xs.Count; i++)
             {
-                standardSeries.Points.Add(new DataPoint(xs[i], xsMeanUsmooth[i])); 
+                standardSeries.Points.Add(new DataPoint(xs[i], Math.Min(xsMeanUsmooth[i], upperBound) )); 
             }
-            
+
+            plotModel.Series.Add(upperSeries);
+            plotModel.Series.Add(zeroSeries);
             plotModel.Series.Add(meanUSeries);
             plotModel.Series.Add(meanUsmoothSeries);
             plotModel.Series.Add(standardSeries);
             
             
-            var exporter = new PngExporter { Width = 900, Height = 480};
+            var exporter = new PngExporter { Width = 900, Height = 740};
             try
             {
                 imagePath = "tmpChart.png";
