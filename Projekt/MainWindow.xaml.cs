@@ -26,6 +26,7 @@ using System.Security.Cryptography;
 
 namespace Projekt
 {
+    // produce singlefile: dotnet publish -r win-x64 /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true --output "d:\singleMean"
     public partial class MainWindow
     {
         const double upperBound = 100;
