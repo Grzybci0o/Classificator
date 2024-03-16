@@ -22,6 +22,8 @@ using OxyPlot.Wpf;
 using Projekt.pliki;
 using LineStyle = OxyPlot.LineStyle;
 
+using System.Security.Cryptography;
+
 namespace Projekt
 {
     public partial class MainWindow
@@ -231,7 +233,7 @@ namespace Projekt
                 notesTextBox.AppendText("The file " + Path.GetFileName(fName) + " has been classified as " + level + " " + shape + "\n");
                 using (StreamWriter writer = new StreamWriter(reportFileName, true, Encoding.GetEncoding("utf-8")))
                 {
-                    string repLine = PrepareJson(level, shape);
+                    string repLine = PrepareJson(level, shape, stamp(fName));
 
                     if (_currentRowId < _fnames.Length)
                     {
@@ -250,9 +252,10 @@ namespace Projekt
             ShowNext();
         }
 
-        private string PrepareJson(string level, string shape)
+        private string PrepareJson(string level, string shape, string stamp)
         {
-            string js = "{\"C\":" + "\"" + level + "\"" + ", \"S\":" + "\"" + shape + "\"" + ", \"ts\":" + _currentRowMeans.TS;
+            string js = "{";
+            js += "\"C\":" + "\"" + level + "\"" + ", \"S\":" + "\"" + shape + "\"" + ", \"ts\":" + _currentRowMeans.TS;
             js += ", \"T\":[";
             for (int i = 0; i < _currentRowMeans.T.Count - 1; i++)
             {
@@ -263,10 +266,28 @@ namespace Projekt
             {
                 js += _currentRowMeans.M[i] + ", ";
             }
-            js += _currentRowMeans.M.Last() + "]}";
+            js += _currentRowMeans.M.Last() + "],";
+            js += "\"stamp\":\"" + stamp + "\"";
+            js += "}";
             return js;
         }
 
+        private string stamp(string input)
+        {
+            using (SHA256 sha256 = SHA256.Create())
+            {
+                // ComputeHash - zwraca tablicę bajtów, więc musimy ją przekonwertować na string
+                byte[] bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
+
+                // Konwertowanie tablicy bajtów na zapis szesnastkowy
+                StringBuilder builder = new StringBuilder();
+                for (int i = 0; i < bytes.Length; i++)
+                {
+                    builder.Append(bytes[i].ToString("x2"));
+                }
+                return builder.ToString();
+            }
+        }
         public void ShowNext()
         {
             if (!_isNext)
@@ -365,11 +386,11 @@ namespace Projekt
             };
 
             zeroSeries.Points.Add(new DataPoint(timings[0], 0));
-            upperSeries.Points.Add(new DataPoint(timings[0], 100));
+            upperSeries.Points.Add(new DataPoint(timings[0], upperBound));
 
             for (int i = 0; i < timings.Count; i++)
             {
-                meanUSeries.Points.Add(new DataPoint(timings[i], Math.Min(meanU[i], upperBound)));
+                meanUSeries.Points.Add(new DataPoint(timings[i], cutToScale(meanU[i])));
             }
             
             var interpolation = Interpolation(timings, meanU);
@@ -377,13 +398,13 @@ namespace Projekt
             var xnewMeanUsmooth = xnew.Select(x => interpolation.Interpolate(x)).ToArray();
             for (int i = 0; i < xnew.Count; i++)
             {
-                meanUsmoothSeries.Points.Add(new DataPoint(xnew[i], Math.Min(xnewMeanUsmooth[i], upperBound)));
+                meanUsmoothSeries.Points.Add(new DataPoint(xnew[i], cutToScale(xnewMeanUsmooth[i])));
             }
             
             var xsMeanUsmooth = xs.Select(x => interpolation.Interpolate(x)).ToArray();
             for (int i = 0; i < xs.Count; i++)
             {
-                standardSeries.Points.Add(new DataPoint(xs[i], Math.Min(xsMeanUsmooth[i], upperBound) )); 
+                standardSeries.Points.Add(new DataPoint(xs[i], cutToScale(xsMeanUsmooth[i]) )); 
             }
 
             plotModel.Series.Add(upperSeries);
@@ -393,7 +414,7 @@ namespace Projekt
             plotModel.Series.Add(standardSeries);
             
             
-            var exporter = new PngExporter { Width = 900, Height = 740};
+            var exporter = new PngExporter { Width = 900, Height = 800};
             try
             {
                 imagePath = "tmpChart.png";
@@ -408,6 +429,11 @@ namespace Projekt
 
             BitmapSource bitmap = exporter.ExportToBitmap(plotModel);
             picture.Source = bitmap;
+        }
+
+        private double cutToScale(double x)
+        {
+            return Math.Min(Math.Max(x, 0), upperBound);
         }
 
         private List<double> XNewValue(List<int> timingi)
